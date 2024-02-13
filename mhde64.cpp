@@ -1,21 +1,14 @@
-/*
- * Hacker Disassembler Engine 64 C
- * Copyright (c) 2008-2009, Vyacheslav Patkov.
- * All rights reserved.
- *
- */
-
 #if defined(_M_X64) || defined(__x86_64__)
 
-#include "hdepp64.h"
+#include "mhde64.h"
 #include "table64.h"
 
 #include <cstring>
 
 unsigned int hde64_disasm(const void *code, hde64s *hs) {
-    uint8_t x, c, *p = (uint8_t *) code, cflags, opcode, pref = 0;
-    uint8_t *ht = hde64_table, m_mod, m_reg, m_rm, disp_size = 0;
-    uint8_t op64 = 0;
+    UINT8 x, c, *p = (UINT8 *) code, cflags, opcode, pref = 0;
+    UINT8 *ht = hde64_table, m_mod, m_reg, m_rm, disp_size = 0;
+    UINT8 op64 = 0;
 
     memset(hs, 0, sizeof(hde64s));
 
@@ -55,7 +48,7 @@ unsigned int hde64_disasm(const void *code, hde64s *hs) {
         }
 pref_done:
 
-    hs->flags = static_cast<uint32_t>(pref) << 23;
+    hs->flags = static_cast<UINT32>(pref) << 23;
 
     if (!pref)
         pref |= PRE_NONE;
@@ -97,9 +90,9 @@ pref_done:
 
     x = 0;
     if (cflags & C_GROUP) {
-        const uint16_t t = *reinterpret_cast<uint16_t *>(ht + (cflags & 0x7f));
-        cflags = static_cast<uint8_t>(t);
-        x = static_cast<uint8_t>(t >> 8);
+        const UINT16 t = *reinterpret_cast<UINT16 *>(ht + (cflags & 0x7f));
+        cflags = static_cast<UINT8>(t);
+        x = static_cast<UINT8>(t >> 8);
     }
 
     if (hs->opcode2) {
@@ -119,7 +112,7 @@ pref_done:
             hs->flags |= F_ERROR | F_ERROR_OPCODE;
 
         if (!hs->opcode2 && opcode >= 0xd9 && opcode <= 0xdf) {
-            uint8_t t = opcode - 0xd9;
+            UINT8 t = opcode - 0xd9;
             if (m_mod == 3) {
                 ht = hde64_table + DELTA_FPU_MODRM + t * 8;
                 t = ht[m_reg] << m_rm;
@@ -135,7 +128,7 @@ pref_done:
             if (m_mod == 3) {
                 hs->flags |= F_ERROR | F_ERROR_LOCK;
             } else {
-                uint8_t *table_end, op = opcode;
+                UINT8 *table_end, op = opcode;
                 if (hs->opcode2) {
                     ht = hde64_table + DELTA_OP2_LOCK_OK;
                     table_end = ht + DELTA_OP_ONLY_MEM - DELTA_OP2_LOCK_OK;
@@ -190,7 +183,7 @@ pref_done:
         }
 
         if (m_mod == 3) {
-            uint8_t *table_end;
+            UINT8 *table_end;
             if (hs->opcode2) {
                 ht = hde64_table + DELTA_OP2_ONLY_MEM;
                 table_end = ht + sizeof(hde64_table) - DELTA_OP2_ONLY_MEM;
@@ -274,11 +267,11 @@ pref_done:
                 break;
             case 2:
                 hs->flags |= F_DISP16;
-                hs->disp.disp16 = *reinterpret_cast<uint16_t *>(p);
+                hs->disp.disp16 = *reinterpret_cast<UINT16 *>(p);
                 break;
             case 4:
                 hs->flags |= F_DISP32;
-                hs->disp.disp32 = *reinterpret_cast<uint32_t *>(p);
+                hs->disp.disp32 = *reinterpret_cast<UINT32 *>(p);
                 break;
             default: ;
         }
@@ -290,7 +283,7 @@ pref_done:
         if (cflags & C_REL32) {
             if (pref & PRE_66) {
                 hs->flags |= F_IMM16 | F_RELATIVE;
-                hs->imm.imm16 = *reinterpret_cast<uint16_t *>(p);
+                hs->imm.imm16 = *reinterpret_cast<UINT16 *>(p);
                 p += 2;
                 goto disasm_done;
             }
@@ -298,11 +291,11 @@ pref_done:
         }
         if (op64) {
             hs->flags |= F_IMM64;
-            hs->imm.imm64 = *reinterpret_cast<uint64_t *>(p);
+            hs->imm.imm64 = *reinterpret_cast<UINT64 *>(p);
             p += 8;
         } else if (!(pref & PRE_66)) {
             hs->flags |= F_IMM32;
-            hs->imm.imm32 = *reinterpret_cast<uint32_t *>(p);
+            hs->imm.imm32 = *reinterpret_cast<UINT32 *>(p);
             p += 4;
         } else
             goto imm16_ok;
@@ -312,7 +305,7 @@ pref_done:
     if (cflags & C_IMM16) {
     imm16_ok:
         hs->flags |= F_IMM16;
-        hs->imm.imm16 = *reinterpret_cast<uint16_t *>(p);
+        hs->imm.imm16 = *reinterpret_cast<UINT16 *>(p);
         p += 2;
     }
     if (cflags & C_IMM8) {
@@ -323,7 +316,7 @@ pref_done:
     if (cflags & C_REL32) {
     rel32_ok:
         hs->flags |= F_IMM32 | F_RELATIVE;
-        hs->imm.imm32 = *reinterpret_cast<uint32_t *>(p);
+        hs->imm.imm32 = *reinterpret_cast<UINT32 *>(p);
         p += 4;
     } else if (cflags & C_REL8) {
         hs->flags |= F_IMM8 | F_RELATIVE;
@@ -332,7 +325,7 @@ pref_done:
 
 disasm_done:
 
-    if ((hs->len = static_cast<uint8_t>(p - (uint8_t *) code)) > 15) {
+    if ((hs->len = static_cast<UINT8>(p - (UINT8 *) code)) > 15) {
         hs->flags |= F_ERROR | F_ERROR_LENGTH;
         hs->len = 15;
     }
