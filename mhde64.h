@@ -78,7 +78,7 @@ typedef struct
     } disp;
 
     UINT32 flags;
-} hde64s;
+} mhde64s;
 
 #pragma pack(pop)
 
@@ -88,7 +88,7 @@ extern "C"
 #endif
 
     /* __cdecl */
-    unsigned int hde64_disasm(const void *code, hde64s *hs);
+    unsigned int mhde64_disasm(const void *code, mhde64s *hs);
 
 #ifdef __cplusplus
 }

@@ -4,12 +4,12 @@
 #include "table32.h"
 #include <string.h>
 
-unsigned int hde32_disasm(const void *code, hde32s *hs)
+unsigned int mhde32_disasm(const void *code, mhde32s *hs)
 {
     uint8_t x, c, *p = (uint8_t *)code, cflags, opcode, pref = 0;
     uint8_t *ht = hde32_table, m_mod, m_reg, m_rm, disp_size = 0;
 
-    memset(hs, 0, sizeof(hde32s));
+    memset(hs, 0, sizeof(mhde32s));
 
     for (x = 16; x; x--)
         switch (c = *p++)
