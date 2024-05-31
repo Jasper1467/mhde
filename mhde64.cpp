@@ -1,14 +1,14 @@
 #if defined(_M_X64) || defined(__x86_64__)
 
-#include "mhde64.h"
-#include "table64.h"
+#include "mhde64.hpp"
+#include "table64.hpp"
 
 #include <cstring>
 
 unsigned int mhde64_disasm(const void *code, mhde64s *hs)
 {
     UINT8 x, c, *p = (UINT8 *)code, cflags, opcode, pref = 0;
-    UINT8 *ht = hde64_table, m_mod, m_reg, m_rm, disp_size = 0;
+    UINT8 *ht = mmhde64_table, m_mod, m_reg, m_rm, disp_size = 0;
     UINT8 op64 = 0;
 
     memset(hs, 0, sizeof(mhde64s));
@@ -106,7 +106,7 @@ pref_done:
 
     if (hs->opcode2)
     {
-        ht = hde64_table + DELTA_PREFIXES;
+        ht = mhde64_table + DELTA_PREFIXES;
         if (ht[ht[opcode / 4] + (opcode % 4)] & pref)
             hs->flags |= F_ERROR | F_ERROR_OPCODE;
     }
@@ -127,12 +127,12 @@ pref_done:
             UINT8 t = opcode - 0xd9;
             if (m_mod == 3)
             {
-                ht = hde64_table + DELTA_FPU_MODRM + t * 8;
+                ht = mhde64_table + DELTA_FPU_MODRM + t * 8;
                 t = ht[m_reg] << m_rm;
             }
             else
             {
-                ht = hde64_table + DELTA_FPU_REG;
+                ht = mhde64_table + DELTA_FPU_REG;
                 t = ht[t] << m_reg;
             }
             if (t & 0x80)
@@ -150,12 +150,12 @@ pref_done:
                 UINT8 *table_end, op = opcode;
                 if (hs->opcode2)
                 {
-                    ht = hde64_table + DELTA_OP2_LOCK_OK;
+                    ht = mhde64_table + DELTA_OP2_LOCK_OK;
                     table_end = ht + DELTA_OP_ONLY_MEM - DELTA_OP2_LOCK_OK;
                 }
                 else
                 {
-                    ht = hde64_table + DELTA_OP_LOCK_OK;
+                    ht = mhde64_table + DELTA_OP_LOCK_OK;
                     table_end = ht + DELTA_OP2_LOCK_OK - DELTA_OP_LOCK_OK;
                     op &= -2;
                 }
@@ -214,12 +214,12 @@ pref_done:
             UINT8 *table_end;
             if (hs->opcode2)
             {
-                ht = hde64_table + DELTA_OP2_ONLY_MEM;
-                table_end = ht + sizeof(hde64_table) - DELTA_OP2_ONLY_MEM;
+                ht = mhde64_table + DELTA_OP2_ONLY_MEM;
+                table_end = ht + sizeof(mhde64_table) - DELTA_OP2_ONLY_MEM;
             }
             else
             {
-                ht = hde64_table + DELTA_OP_ONLY_MEM;
+                ht = mhde64_table + DELTA_OP_ONLY_MEM;
                 table_end = ht + DELTA_OP2_ONLY_MEM - DELTA_OP_ONLY_MEM;
             }
             for (; ht != table_end; ht += 2)

@@ -1,16 +1,17 @@
 ﻿#pragma once
-#include "pstdint.h"
+
+#include "pstdint.hpp"
 
 #define F_MODRM 0x00000001
 #define F_SIB 0x00000002
 #define F_IMM8 0x00000004
 #define F_IMM16 0x00000008
 #define F_IMM32 0x00000010
-#define F_IMM64 0x00000020
-#define F_DISP8 0x00000040
-#define F_DISP16 0x00000080
-#define F_DISP32 0x00000100
-#define F_RELATIVE 0x00000200
+#define F_DISP8 0x00000020
+#define F_DISP16 0x00000040
+#define F_DISP32 0x00000080
+#define F_RELATIVE 0x00000100
+#define F_2IMM16 0x00000800
 #define F_ERROR 0x00001000
 #define F_ERROR_OPCODE 0x00002000
 #define F_ERROR_LENGTH 0x00004000
@@ -23,8 +24,7 @@
 #define F_PREFIX_67 0x08000000
 #define F_PREFIX_LOCK 0x10000000
 #define F_PREFIX_SEG 0x20000000
-#define F_PREFIX_REX 0x40000000
-#define F_PREFIX_ANY 0x7f000000
+#define F_PREFIX_ANY 0x3f000000
 
 #define PREFIX_SEGMENT_CS 0x2e
 #define PREFIX_SEGMENT_SS 0x36
@@ -48,11 +48,6 @@ typedef struct
     UINT8 p_seg;
     UINT8 p_66;
     UINT8 p_67;
-    UINT8 rex;
-    UINT8 rex_w;
-    UINT8 rex_r;
-    UINT8 rex_x;
-    UINT8 rex_b;
     UINT8 opcode;
     UINT8 opcode2;
     UINT8 modrm;
@@ -68,7 +63,6 @@ typedef struct
         UINT8 imm8;
         UINT16 imm16;
         UINT32 imm32;
-        UINT64 imm64;
     } imm;
 
     union {
@@ -78,7 +72,7 @@ typedef struct
     } disp;
 
     UINT32 flags;
-} mhde64s;
+} mhde32s;
 
 #pragma pack(pop)
 
@@ -88,7 +82,7 @@ extern "C"
 #endif
 
     /* __cdecl */
-    unsigned int mhde64_disasm(const void *code, mhde64s *hs);
+    unsigned int mhde32_disasm(const void *code, mhde32s *hs);
 
 #ifdef __cplusplus
 }

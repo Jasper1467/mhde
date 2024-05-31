@@ -1,13 +1,13 @@
 #if defined(_M_IX86) || defined(__i386__)
 
-#include "mhde32.h"
-#include "table32.h"
+#include "mhde32.hpp"
+#include "table32.hpp"
 #include <string.h>
 
 unsigned int mhde32_disasm(const void *code, mhde32s *hs)
 {
     uint8_t x, c, *p = (uint8_t *)code, cflags, opcode, pref = 0;
-    uint8_t *ht = hde32_table, m_mod, m_reg, m_rm, disp_size = 0;
+    uint8_t *ht = mhde32_table, m_mod, m_reg, m_rm, disp_size = 0;
 
     memset(hs, 0, sizeof(mhde32s));
 
@@ -88,7 +88,7 @@ pref_done:
 
     if (hs->opcode2)
     {
-        ht = hde32_table + DELTA_PREFIXES;
+        ht = mhde32_table + DELTA_PREFIXES;
         if (ht[ht[opcode / 4] + (opcode % 4)] & pref)
             hs->flags |= F_ERROR | F_ERROR_OPCODE;
     }
@@ -109,12 +109,12 @@ pref_done:
             uint8_t t = opcode - 0xd9;
             if (m_mod == 3)
             {
-                ht = hde32_table + DELTA_FPU_MODRM + t * 8;
+                ht = mhde32_table + DELTA_FPU_MODRM + t * 8;
                 t = ht[m_reg] << m_rm;
             }
             else
             {
-                ht = hde32_table + DELTA_FPU_REG;
+                ht = mhde32_table + DELTA_FPU_REG;
                 t = ht[t] << m_reg;
             }
             if (t & 0x80)
@@ -132,12 +132,12 @@ pref_done:
                 uint8_t *table_end, op = opcode;
                 if (hs->opcode2)
                 {
-                    ht = hde32_table + DELTA_OP2_LOCK_OK;
+                    ht = mhde32_table + DELTA_OP2_LOCK_OK;
                     table_end = ht + DELTA_OP_ONLY_MEM - DELTA_OP2_LOCK_OK;
                 }
                 else
                 {
-                    ht = hde32_table + DELTA_OP_LOCK_OK;
+                    ht = mhde32_table + DELTA_OP_LOCK_OK;
                     table_end = ht + DELTA_OP2_LOCK_OK - DELTA_OP_LOCK_OK;
                     op &= -2;
                 }
@@ -196,12 +196,12 @@ pref_done:
             uint8_t *table_end;
             if (hs->opcode2)
             {
-                ht = hde32_table + DELTA_OP2_ONLY_MEM;
-                table_end = ht + sizeof(hde32_table) - DELTA_OP2_ONLY_MEM;
+                ht = mhde32_table + DELTA_OP2_ONLY_MEM;
+                table_end = ht + sizeof(mhde32_table) - DELTA_OP2_ONLY_MEM;
             }
             else
             {
-                ht = hde32_table + DELTA_OP_ONLY_MEM;
+                ht = mhde32_table + DELTA_OP_ONLY_MEM;
                 table_end = ht + DELTA_OP2_ONLY_MEM - DELTA_OP_ONLY_MEM;
             }
             for (; ht != table_end; ht += 2)
