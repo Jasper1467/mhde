@@ -1,7 +1,8 @@
 #if defined(_M_IX86) || defined(__i386__)
 
-#include "mhde32.hpp"
-#include "table32.hpp"
+#include "../include/mhde32.hpp"
+#include "../include/table32.hpp"
+
 #include <string.h>
 
 unsigned int mhde32_disasm(const void *code, mhde32s *hs)

@@ -1,0 +1,2 @@
+/usr/bin/llvm-ar qc libmhde_lib.a CMakeFiles/mhde_lib.dir/src/mhde32.cpp.o CMakeFiles/mhde_lib.dir/src/mhde64.cpp.o
+/usr/bin/llvm-ranlib libmhde_lib.a

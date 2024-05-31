@@ -15,21 +15,15 @@
 class CMHDE
 {
 public:
-    CMHDE()
-    {
-        m_pState = nullptr;
-    }
+    CMHDE() : m_State() {} 
 
-    ~CMHDE()
-    {
-        m_pState = nullptr;
-    }
+    ~CMHDE() = default;
 
     unsigned int Disassemble(const void* pCode)
     {
-        return MHDE_DISASM(pCode, m_pState);
+        return MHDE_DISASM(pCode, &m_State);
     }
 
 private:
-    MHDE_STATE* m_pState;
+    MHDE_STATE m_State;
 };

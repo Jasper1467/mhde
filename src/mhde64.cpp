@@ -1,14 +1,14 @@
 #if defined(_M_X64) || defined(__x86_64__)
 
-#include "mhde64.hpp"
-#include "table64.hpp"
+#include "../include/mhde64.hpp"
+#include "../include/table64.hpp"
 
 #include <cstring>
 
 unsigned int mhde64_disasm(const void *code, mhde64s *hs)
 {
     UINT8 x, c, *p = (UINT8 *)code, cflags, opcode, pref = 0;
-    UINT8 *ht = mmhde64_table, m_mod, m_reg, m_rm, disp_size = 0;
+    UINT8 *ht = mhde64_table, m_mod, m_reg, m_rm, disp_size = 0;
     UINT8 op64 = 0;
 
     memset(hs, 0, sizeof(mhde64s));
