@@ -56,7 +56,11 @@ After successfully building MHDE, you'll find the executable and any associated 
 Here is a simple example demonstrating how to use MHDE:
 
 ```cpp
-#include "mhde.hpp"
+#if defined(__x86_64__) || defined(_M_X64)
+    #include <mhde64.hpp> // Include 64-bit version for x86_64 architecture
+#else
+    #include <mhde32.hpp> // Include 32-bit version for other architectures
+#endif
 
 int main()
 {
