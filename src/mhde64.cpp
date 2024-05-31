@@ -24,6 +24,8 @@ std::uint8_t op64 = 0;
 
 mhde64s* hs = nullptr;
 
+#define CHECK_REX(c) ((c & 0xf0) == 0x40)
+
 void ResetGlobals()
 {
     x = 0;
@@ -42,16 +44,40 @@ void ResetGlobals()
 
 void error_opcode()
 {
+    // Set error flags in the instruction structure
     hs->flags |= F_ERROR | F_ERROR_OPCODE;
+
     cflags = 0;
+
+    // Check if the opcode is a special case
     if ((opcode & -3) == 0x24)
         cflags++;
 }
 
+void error_operand()
+{
+    // Add (operand) error flags
+    hs->flags |= F_ERROR | F_ERROR_OPERAND;
+}
+
+void error_opcode()
+{
+    // Add (opcode) error flags
+    hs->flags |= F_ERROR | F_ERROR_OPCODE;
+}
+
+void error_lock()
+{
+    // Add (lock) error flags
+    hs->flags |= F_ERROR | F_ERROR_LOCK;
+}
+
 void ProcessPrefixes()
 {
+    // Iterate over the prefixes
     for (int x = 16; x; x--)
     {
+        // Switch based on the current prefix
         switch (c = *p++)
         {
         case PREFIX_REPX:
@@ -66,6 +92,7 @@ void ProcessPrefixes()
             hs->p_lock = c;
             pref |= F_PREFIX_LOCK;
             break;
+        // Handle segment prefixes
         case PREFIX_SEGMENT_CS:
         case PREFIX_SEGMENT_SS:
         case PREFIX_SEGMENT_DS:
@@ -84,40 +111,58 @@ void ProcessPrefixes()
             pref |= F_PREFIX_67;
             break;
         default:
+            // Exit the loop if an unrecognized prefix is encountered
             goto pref_done;
         }
     }
 
 pref_done:
 
+    // Set the flags field in the instruction structure
     hs->flags = static_cast<std::uint32_t>(pref) << 23;
 
+    // If no prefix is set, set it to PRE_NONE
     if (!pref)
         pref |= PRE_NONE;
 
-    if ((c & 0xf0) == 0x40)
+    // Check for REX prefix
+    if (CHECK_REX(c))
     {
+        // Set the REX flag in the instruction structure
         hs->flags |= F_PREFIX_REX;
+
+        // Check for the presence of REX.W and adjust the opcode accordingly
         if ((hs->rex_w = (c & 0xf) >> 3) && (*p & 0xf8) == 0xb8)
             op64++;
+
+        // Extract REX.R, REX.X, and REX.B flags
         hs->rex_r = (c & 7) >> 2;
         hs->rex_x = (c & 3) >> 1;
         hs->rex_b = c & 1;
-        if (((c = *p++) & 0xf0) == 0x40)
+
+        // Check for the presence of another REX prefix
+        if (CHECK_REX(c = *p++))
         {
+            // Set opcode and handle error
             opcode = c;
             error_opcode();
         }
     }
 
+    // Check for 0x0F opcode
     if ((hs->opcode = c) == 0x0f)
     {
+        // Set the secondary opcode and adjust pointer
         hs->opcode2 = c = *p++;
         ht += DELTA_OPCODES;
     }
+    // Check for opcodes 0xA0 to 0xA3
     else if (c >= 0xa0 && c <= 0xa3)
     {
+        // Increment op64 count
         op64++;
+
+        // Check for 0x66 prefix
         if (pref & PRE_66)
             pref |= PRE_66;
         else
@@ -127,15 +172,20 @@ pref_done:
 
 void HandlePrefixLock()
 {
+    // Check if the instruction has a lock prefix
     if (pref & PRE_LOCK)
     {
+        // Check if the mod field is 3
         if (nMod == 3)
         {
-            hs->flags |= F_ERROR | F_ERROR_LOCK;
+            // If mod field is 3, set error flags
+            error_lock();
         }
         else
         {
             std::uint8_t *table_end, op = opcode;
+
+            // Determine the appropriate lookup table based on opcode and prefix state
             if (hs->opcode2)
             {
                 ht = mhde64_table + DELTA_OP2_LOCK_OK;
@@ -147,37 +197,48 @@ void HandlePrefixLock()
                 table_end = ht + DELTA_OP2_LOCK_OK - DELTA_OP_LOCK_OK;
                 op &= -2;
             }
+
+            // Iterate through the lookup table to find a matching opcode
             for (; ht != table_end; ht++)
+            {
+                // Check if the opcode matches
                 if (*ht++ == op)
                 {
+                    // If the condition is met, break out of the loop
                     if (!((*ht << nReg) & 0x80))
                         goto no_lock_error;
                     else
                         break;
                 }
-            hs->flags |= F_ERROR | F_ERROR_LOCK;
+            }
+
+            // If no match is found, set error flags
+            error_lock();
         no_lock_error:;
         }
     }
 }
 
-unsigned int disasm_done(const void* pCode)
+std::uint32_t disasm_done(const void* pCode)
 {
-    if ((hs->len = static_cast<std::uint8_t>(p - (std::uint8_t*)pCode)) > 15)
+    constexpr std::uint8_t MAX_DISASM_LENGTH = 15;
+
+    // Calculate the length of the instruction
+    hs->len = static_cast<std::uint8_t>(p - reinterpret_cast<const std::uint8_t*>(pCode));
+
+    // Check if the length exceeds the maximum allowable length
+    if (hs->len > MAX_DISASM_LENGTH)
     {
+        // If so, set error flags and truncate the length
         hs->flags |= F_ERROR | F_ERROR_LENGTH;
-        hs->len = 15;
+        hs->len = MAX_DISASM_LENGTH;
     }
 
-    return (unsigned int)hs->len;
+    // Return the length of the instruction
+    return static_cast<std::uint32_t>(hs->len);
 }
 
-void error_operand()
-{
-    hs->flags |= F_ERROR | F_ERROR_OPERAND;
-}
-
-unsigned int mhde64_disasm(const void* pCode, mhde64s* _hs)
+std::uint32_t mhde64_disasm(const void* pCode, mhde64s* _hs)
 {
     hs = _hs;
 
@@ -190,8 +251,12 @@ unsigned int mhde64_disasm(const void* pCode, mhde64s* _hs)
     ProcessPrefixes();
 
     opcode = c;
-    cflags = ht[ht[opcode / 4] + (opcode % 4)];
 
+    // Each entry in mhde64_table corresponds to a group of four opcodes. So dividing the opcode by 4 and then taking
+    // the remainder with % 4 helps determine the specific entry in mhde64_table that corresponds to the opcode.
+    constexpr int OPCODE_TABLE_GROUP_SIZE = 4;
+
+    cflags = ht[ht[opcode / OPCODE_TABLE_GROUP_SIZE] + (opcode % OPCODE_TABLE_GROUP_SIZE)];
     if (cflags == C_ERROR)
         error_opcode();
 
@@ -206,20 +271,26 @@ unsigned int mhde64_disasm(const void* pCode, mhde64s* _hs)
     if (hs->opcode2)
     {
         ht = mhde64_table + DELTA_PREFIXES;
-        if (ht[ht[opcode / 4] + (opcode % 4)] & pref)
-            hs->flags |= F_ERROR | F_ERROR_OPCODE;
+        if (ht[ht[opcode / OPCODE_TABLE_GROUP_SIZE] + (opcode % OPCODE_TABLE_GROUP_SIZE)] & pref)
+            error_opcode();
     }
 
     if (cflags & C_MODRM)
     {
         hs->flags |= F_MODRM;
         hs->modrm = c = *p++;
+
+        // Extract the "mod" field from the ModR/M byte
         hs->modrm_mod = nMod = c >> 6;
+
+        // Extract the operand field from the ModR/M byte
         hs->modrm_rm = nRm = c & 7;
+
+        // Extract the register field from the ModR/M byte
         hs->modrm_reg = nReg = (c & 0x3f) >> 3;
 
         if (x && ((x << nReg) & 0x80))
-            hs->flags |= F_ERROR | F_ERROR_OPCODE;
+            error_opcode();
 
         if (!hs->opcode2 && opcode >= 0xd9 && opcode <= 0xdf)
         {
@@ -235,7 +306,7 @@ unsigned int mhde64_disasm(const void* pCode, mhde64s* _hs)
                 t = ht[t] << nReg;
             }
             if (t & 0x80)
-                hs->flags |= F_ERROR | F_ERROR_OPCODE;
+                error_opcode();
         }
 
         if (hs->opcode2)
@@ -384,8 +455,7 @@ unsigned int mhde64_disasm(const void* pCode, mhde64s* _hs)
         p += nDispSize;
     }
     else if (pref & PRE_LOCK)
-        hs->flags |= F_ERROR | F_ERROR_LOCK;
-
+        error_lock();
     if (cflags & C_IMM_P66)
     {
         if (cflags & C_REL32)

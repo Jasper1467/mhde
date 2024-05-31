@@ -1,5 +1,6 @@
 ﻿#pragma once
-#include "pstdint.hpp"
+
+#include <cstdint>
 
 enum Flags_e
 {
@@ -48,46 +49,46 @@ enum Prefixes_e
 
 typedef struct
 {
-    UINT8 len;
-    UINT8 p_rep;
-    UINT8 p_lock;
-    UINT8 p_seg;
-    UINT8 p_66;
-    UINT8 p_67;
-    UINT8 rex;
-    UINT8 rex_w;
-    UINT8 rex_r;
-    UINT8 rex_x;
-    UINT8 rex_b;
-    UINT8 opcode;
-    UINT8 opcode2;
-    UINT8 modrm;
-    UINT8 modrm_mod;
-    UINT8 modrm_reg;
-    UINT8 modrm_rm;
-    UINT8 sib;
-    UINT8 sib_scale;
-    UINT8 sib_index;
-    UINT8 sib_base;
+    std::uint8_t len;
+    std::uint8_t p_rep;
+    std::uint8_t p_lock;
+    std::uint8_t p_seg;
+    std::uint8_t p_66;
+    std::uint8_t p_67;
+    std::uint8_t rex;
+    std::uint8_t rex_w;
+    std::uint8_t rex_r;
+    std::uint8_t rex_x;
+    std::uint8_t rex_b;
+    std::uint8_t opcode;
+    std::uint8_t opcode2;
+    std::uint8_t modrm;
+    std::uint8_t modrm_mod;
+    std::uint8_t modrm_reg;
+    std::uint8_t modrm_rm;
+    std::uint8_t sib;
+    std::uint8_t sib_scale;
+    std::uint8_t sib_index;
+    std::uint8_t sib_base;
 
     union
     {
-        UINT8 imm8;
-        UINT16 imm16;
-        UINT32 imm32;
-        UINT64 imm64;
+        std::uint8_t imm8;
+        std::uint16_t imm16;
+        std::uint32_t imm32;
+        std::uint64_t imm64;
     } imm;
 
     union
     {
-        UINT8 disp8;
-        UINT16 disp16;
-        UINT32 disp32;
+        std::uint8_t disp8;
+        std::uint16_t disp16;
+        std::uint32_t disp32;
     } disp;
 
-    UINT32 flags;
+    std::uint32_t flags;
 } mhde64s;
 
 #pragma pack(pop)
 
-unsigned int mhde64_disasm(const void *pCode, mhde64s *pHs);
+std::uint32_t mhde64_disasm(const void* pCode, mhde64s* pHs);

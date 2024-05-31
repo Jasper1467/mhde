@@ -5,16 +5,16 @@
 
 #include <cstring>
 
-unsigned int mhde32_disasm(const void *pCode, mhde32s *pHs)
+unsigned int mhde32_disasm(const void* pCode, mhde32s* pHs)
 {
     std::uint8_t x;
     std::uint8_t c;
-    std::uint8_t *p = (std::uint8_t *)pCode;
+    std::uint8_t* p = (std::uint8_t*)pCode;
     std::uint8_t cflags;
     std::uint8_t opcode;
     std::uint8_t pref = 0;
 
-    std::uint8_t *ht = mhde32_table;
+    std::uint8_t* ht = mhde32_table;
 
     std::uint8_t nMod;
     std::uint8_t nReg;
@@ -93,7 +93,7 @@ pref_done:
     if (cflags & C_GROUP)
     {
         uint16_t t;
-        t = *(uint16_t *)(ht + (cflags & 0x7f));
+        t = *(uint16_t*)(ht + (cflags & 0x7f));
         cflags = (std::uint8_t)t;
         x = (std::uint8_t)(t >> 8);
     }
@@ -205,7 +205,7 @@ pref_done:
 
         if (nMod == 3)
         {
-            std::uint8_t *table_end;
+            std::uint8_t* table_end;
             if (pHs->opcode2)
             {
                 ht = mhde32_table + DELTA_OP2_ONLY_MEM;
@@ -302,11 +302,11 @@ pref_done:
             break;
         case 2:
             pHs->flags |= F_DISP16;
-            pHs->disp.disp16 = *(uint16_t *)p;
+            pHs->disp.disp16 = *(uint16_t*)p;
             break;
         case 4:
             pHs->flags |= F_DISP32;
-            pHs->disp.disp32 = *(uint32_t *)p;
+            pHs->disp.disp32 = *(uint32_t*)p;
             break;
         }
         p += nDispSize;
@@ -321,7 +321,7 @@ pref_done:
             if (pref & PRE_66)
             {
                 pHs->flags |= F_IMM16 | F_RELATIVE;
-                pH->imm.imm16 = *(uint16_t *)p;
+                pH->imm.imm16 = *(uint16_t*)p;
                 p += 2;
                 goto disasm_done;
             }
@@ -330,13 +330,13 @@ pref_done:
         if (pref & PRE_66)
         {
             pHs->flags |= F_IMM16;
-            pHs->imm.imm16 = *(uint16_t *)p;
+            pHs->imm.imm16 = *(uint16_t*)p;
             p += 2;
         }
         else
         {
             pHs->flags |= F_IMM32;
-            pHs->imm.imm32 = *(uint32_t *)p;
+            pHs->imm.imm32 = *(uint32_t*)p;
             p += 4;
         }
     }
@@ -346,17 +346,17 @@ pref_done:
         if (pHs->flags & F_IMM32)
         {
             pHs->flags |= F_IMM16;
-            pHs->disp.disp16 = *(uint16_t *)p;
+            pHs->disp.disp16 = *(uint16_t*)p;
         }
         else if (hs->flags & F_IMM16)
         {
             pHs->flags |= F_2IMM16;
-            pHs->disp.disp16 = *(uint16_t *)p;
+            pHs->disp.disp16 = *(uint16_t*)p;
         }
         else
         {
             pHs->flags |= F_IMM16;
-            pHs->imm.imm16 = *(uint16_t *)p;
+            pHs->imm.imm16 = *(uint16_t*)p;
         }
         p += 2;
     }
@@ -370,7 +370,7 @@ pref_done:
     {
     rel32_ok:
         pHs->flags |= F_IMM32 | F_RELATIVE;
-        pHs->imm.imm32 = *(uint32_t *)p;
+        pHs->imm.imm32 = *(uint32_t*)p;
         p += 4;
     }
     else if (cflags & C_REL8)
@@ -381,7 +381,7 @@ pref_done:
 
 disasm_done:
 
-    if ((pHs->len = (std::uint8_t)(p - (std::uint8_t *)pCode)) > 15)
+    if ((pHs->len = (std::uint8_t)(p - (std::uint8_t*)pCode)) > 15)
     {
         pHs->flags |= F_ERROR | F_ERROR_LENGTH;
         pHs->len = 15;
