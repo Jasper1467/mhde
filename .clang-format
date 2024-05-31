@@ -1,0 +1,12 @@
+﻿---
+BasedOnStyle: Microsoft
+AllowShortIfStatementsOnASingleLine: Never
+BreakBeforeBraces: Allman
+Cpp11BracedListStyle: 'false'
+IndentWidth: '4'
+NamespaceIndentation: All
+PointerAlignment: Left
+SpaceInEmptyParentheses: 'false'
+Standard: Cpp11
+
+...

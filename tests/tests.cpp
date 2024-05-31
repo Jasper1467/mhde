@@ -16,7 +16,15 @@ void TestDisassemble()
 
 int main()
 {
-    try 
+#if defined(_M_IX86) || defined(__i386__)
+    printf("Testing 32 bit!\n");
+#elif defined(_M_X64) || defined(__x86_64__)
+    printf("Testing 64 bit!\n");
+#else 
+    #error "Unsupported architecture"
+#endif // defined(_M_IX86) || defined(__i386__)
+
+    try
     {
         TestDisassemble();
         printf("Tests passed\n");

@@ -6,21 +6,38 @@ set(PROJECT_DESCRIPTION "A modern C++ port of the HDE (Hacker Disassembler Engin
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Source files
-set(SOURCES
-    src/mhde32.cpp
-    src/mhde64.cpp
-)
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(ARCH 64)
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    set(ARCH 32)
+endif()
 
-# Header files
-set(HEADERS
-    include/mhde32.hpp
-    include/mhde64.hpp
-    include/pstdint.hpp
-    include/table32.hpp
-    include/table64.hpp
-    include/wrapper.hpp
-)
+# Source files
+if (${ARCH} EQUAL 32)
+    set(SOURCES
+        src/mhde32.cpp
+    )
+    set(HEADERS
+        include/mhde32.hpp
+        include/pstdint.hpp
+        include/table32.hpp
+        include/wrapper.hpp
+    )
+elseif (${ARCH} EQUAL 64)
+    set(SOURCES
+        src/mhde64.cpp
+    )
+    set(HEADERS
+        include/mhde64.hpp
+        include/pstdint.hpp
+        include/table64.hpp
+        include/wrapper.hpp
+    )
+else()
+    message(FATAL_ERROR "Unsupported architecture")
+endif()
+
+message(STATUS "Building in architecture: ${ARCH} bit!")
 
 # Create library
 add_library(mhde_lib STATIC ${SOURCES} ${HEADERS})

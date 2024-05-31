@@ -7,19 +7,19 @@
 
 unsigned int mhde32_disasm(const void *pCode, mhde32s *pHs)
 {
-    uint8_t x;
-    uint8_t c;
-    uint8_t *p = (uint8_t *)pCode;
-    uint8_t cflags;
-    uint8_t opcode;
-    uint8_t pref = 0;
+    std::uint8_t x;
+    std::uint8_t c;
+    std::uint8_t *p = (std::uint8_t *)pCode;
+    std::uint8_t cflags;
+    std::uint8_t opcode;
+    std::uint8_t pref = 0;
 
-    uint8_t *ht = mhde32_table;
+    std::uint8_t *ht = mhde32_table;
 
-    uint8_t nMod;
-    uint8_t nReg;
-    uint8_t nRm;
-    uint8_t nDispSize = 0;
+    std::uint8_t nMod;
+    std::uint8_t nReg;
+    std::uint8_t nRm;
+    std::uint8_t nDispSize = 0;
 
     memset(pHs, 0, sizeof(mhde32s));
 
@@ -94,8 +94,8 @@ pref_done:
     {
         uint16_t t;
         t = *(uint16_t *)(ht + (cflags & 0x7f));
-        cflags = (uint8_t)t;
-        x = (uint8_t)(t >> 8);
+        cflags = (std::uint8_t)t;
+        x = (std::uint8_t)(t >> 8);
     }
 
     if (pHs->opcode2)
@@ -118,7 +118,7 @@ pref_done:
 
         if (!pHs->opcode2 && opcode >= 0xd9 && opcode <= 0xdf)
         {
-            uint8_t t = opcode - 0xd9;
+            std::uint8_t t = opcode - 0xd9;
             if (nMod == 3)
             {
                 ht = mhde32_table + DELTA_FPU_MODRM + t * 8;
@@ -141,7 +141,7 @@ pref_done:
             }
             else
             {
-                uint8_t *table_end, op = opcode;
+                std::uint8_t *table_end, op = opcode;
                 if (pHs->opcode2)
                 {
                     ht = mhde32_table + DELTA_OP2_LOCK_OK;
@@ -205,7 +205,7 @@ pref_done:
 
         if (nMod == 3)
         {
-            uint8_t *table_end;
+            std::uint8_t *table_end;
             if (pHs->opcode2)
             {
                 ht = mhde32_table + DELTA_OP2_ONLY_MEM;
@@ -381,7 +381,7 @@ pref_done:
 
 disasm_done:
 
-    if ((pHs->len = (uint8_t)(p - (uint8_t *)pCode)) > 15)
+    if ((pHs->len = (std::uint8_t)(p - (std::uint8_t *)pCode)) > 15)
     {
         pHs->flags |= F_ERROR | F_ERROR_LENGTH;
         pHs->len = 15;

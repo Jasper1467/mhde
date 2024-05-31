@@ -3,140 +3,227 @@
 #include "../include/mhde64.hpp"
 #include "../include/table64.hpp"
 
+#include <cstdint>
 #include <cstring>
 
-unsigned int mhde64_disasm(const void *pCode, mhde64s *pHs)
+std::uint8_t x = 0;
+std::uint8_t c = 0;
+std::uint8_t cflags = 0;
+std::uint8_t opcode = 0;
+std::uint8_t pref = 0;
+
+std::uint8_t* p = nullptr;
+std::uint8_t* ht = nullptr;
+
+std::uint8_t nMod = 0;
+std::uint8_t nReg = 0;
+std::uint8_t nRm = 0;
+std::uint8_t nDispSize = 0;
+
+std::uint8_t op64 = 0;
+
+mhde64s* hs = nullptr;
+
+void ResetGlobals()
 {
-    UINT8 x;
-    UINT8 c;
-    UINT8 cflags;
-    UINT8 opcode;
-    UINT8 pref = 0;
+    x = 0;
+    c = 0;
+    cflags = 0;
+    opcode = 0;
+    pref = 0;
 
-    UINT8 *p = (UINT8 *)pCode;
-    UINT8 *ht = mhde64_table;
+    nMod = 0;
+    nReg = 0;
+    nRm = 0;
+    nDispSize = 0;
 
-    UINT8 nMod;
-    UINT8 nReg;
-    UINT8 nRm;
-    UINT8 nDispSize = 0;
+    op64 = 0;
+}
 
-    UINT8 op64 = 0;
+void error_opcode()
+{
+    hs->flags |= F_ERROR | F_ERROR_OPCODE;
+    cflags = 0;
+    if ((opcode & -3) == 0x24)
+        cflags++;
+}
 
-    memset(pHs, 0, sizeof(mhde64s));
-
-    for (x = 16; x; x--)
+void ProcessPrefixes()
+{
+    for (int x = 16; x; x--)
+    {
         switch (c = *p++)
         {
-        case 0xf3:
-            pHs->p_rep = c;
-            pref |= PRE_F3;
+        case PREFIX_REPX:
+            hs->p_rep = c;
+            pref |= F_PREFIX_REPX;
             break;
-        case 0xf2:
-            pHs->p_rep = c;
-            pref |= PRE_F2;
+        case PREFIX_REPNZ:
+            hs->p_rep = c;
+            pref |= F_PREFIX_REPNZ;
             break;
-        case 0xf0:
-            pHs->p_lock = c;
-            pref |= PRE_LOCK;
+        case PREFIX_LOCK:
+            hs->p_lock = c;
+            pref |= F_PREFIX_LOCK;
             break;
-        case 0x26:
-        case 0x2e:
-        case 0x36:
-        case 0x3e:
-        case 0x64:
-        case 0x65:
-            pHs->p_seg = c;
-            pref |= PRE_SEG;
+        case PREFIX_SEGMENT_CS:
+        case PREFIX_SEGMENT_SS:
+        case PREFIX_SEGMENT_DS:
+        case PREFIX_SEGMENT_ES:
+        case PREFIX_SEGMENT_FS:
+        case PREFIX_SEGMENT_GS:
+            hs->p_seg = c;
+            pref |= F_PREFIX_SEG;
             break;
-        case 0x66:
-            pHs->p_66 = c;
-            pref |= PRE_66;
+        case PREFIX_OPERAND_SIZE:
+            hs->p_66 = c;
+            pref |= F_PREFIX_66;
             break;
-        case 0x67:
-            pHs->p_67 = c;
-            pref |= PRE_67;
+        case PREFIX_ADDRESS_SIZE:
+            hs->p_67 = c;
+            pref |= F_PREFIX_67;
             break;
         default:
             goto pref_done;
         }
+    }
+
 pref_done:
 
-    pHs->flags = static_cast<UINT32>(pref) << 23;
+    hs->flags = static_cast<std::uint32_t>(pref) << 23;
 
     if (!pref)
         pref |= PRE_NONE;
 
     if ((c & 0xf0) == 0x40)
     {
-        pHs->flags |= F_PREFIX_REX;
-        if ((pHs->rex_w = (c & 0xf) >> 3) && (*p & 0xf8) == 0xb8)
+        hs->flags |= F_PREFIX_REX;
+        if ((hs->rex_w = (c & 0xf) >> 3) && (*p & 0xf8) == 0xb8)
             op64++;
-        pHs->rex_r = (c & 7) >> 2;
-        pHs->rex_x = (c & 3) >> 1;
-        pHs->rex_b = c & 1;
+        hs->rex_r = (c & 7) >> 2;
+        hs->rex_x = (c & 3) >> 1;
+        hs->rex_b = c & 1;
         if (((c = *p++) & 0xf0) == 0x40)
         {
             opcode = c;
-            goto error_opcode;
+            error_opcode();
         }
     }
 
-    if ((pHs->opcode = c) == 0x0f)
+    if ((hs->opcode = c) == 0x0f)
     {
-        pHs->opcode2 = c = *p++;
+        hs->opcode2 = c = *p++;
         ht += DELTA_OPCODES;
     }
     else if (c >= 0xa0 && c <= 0xa3)
     {
         op64++;
-        if (pref & PRE_67)
+        if (pref & PRE_66)
             pref |= PRE_66;
         else
             pref &= ~PRE_66;
     }
+}
+
+void HandlePrefixLock()
+{
+    if (pref & PRE_LOCK)
+    {
+        if (nMod == 3)
+        {
+            hs->flags |= F_ERROR | F_ERROR_LOCK;
+        }
+        else
+        {
+            std::uint8_t *table_end, op = opcode;
+            if (hs->opcode2)
+            {
+                ht = mhde64_table + DELTA_OP2_LOCK_OK;
+                table_end = ht + DELTA_OP_ONLY_MEM - DELTA_OP2_LOCK_OK;
+            }
+            else
+            {
+                ht = mhde64_table + DELTA_OP_LOCK_OK;
+                table_end = ht + DELTA_OP2_LOCK_OK - DELTA_OP_LOCK_OK;
+                op &= -2;
+            }
+            for (; ht != table_end; ht++)
+                if (*ht++ == op)
+                {
+                    if (!((*ht << nReg) & 0x80))
+                        goto no_lock_error;
+                    else
+                        break;
+                }
+            hs->flags |= F_ERROR | F_ERROR_LOCK;
+        no_lock_error:;
+        }
+    }
+}
+
+unsigned int disasm_done(const void* pCode)
+{
+    if ((hs->len = static_cast<std::uint8_t>(p - (std::uint8_t*)pCode)) > 15)
+    {
+        hs->flags |= F_ERROR | F_ERROR_LENGTH;
+        hs->len = 15;
+    }
+
+    return (unsigned int)hs->len;
+}
+
+void error_operand()
+{
+    hs->flags |= F_ERROR | F_ERROR_OPERAND;
+}
+
+unsigned int mhde64_disasm(const void* pCode, mhde64s* _hs)
+{
+    hs = _hs;
+
+    p = (std::uint8_t*)pCode;
+    ht = mhde64_table;
+
+    memset(hs, 0, sizeof(mhde64s));
+
+    ResetGlobals();
+    ProcessPrefixes();
 
     opcode = c;
     cflags = ht[ht[opcode / 4] + (opcode % 4)];
 
     if (cflags == C_ERROR)
-    {
-    error_opcode:
-        pHs->flags |= F_ERROR | F_ERROR_OPCODE;
-        cflags = 0;
-        if ((opcode & -3) == 0x24)
-            cflags++;
-    }
+        error_opcode();
 
     x = 0;
     if (cflags & C_GROUP)
     {
-        const UINT16 t = *reinterpret_cast<UINT16 *>(ht + (cflags & 0x7f));
-        cflags = static_cast<UINT8>(t);
-        x = static_cast<UINT8>(t >> 8);
+        const std::uint16_t t = *reinterpret_cast<std::uint16_t*>(ht + (cflags & 0x7f));
+        cflags = static_cast<std::uint8_t>(t);
+        x = static_cast<std::uint8_t>(t >> 8);
     }
 
-    if (pHs->opcode2)
+    if (hs->opcode2)
     {
         ht = mhde64_table + DELTA_PREFIXES;
         if (ht[ht[opcode / 4] + (opcode % 4)] & pref)
-            pHs->flags |= F_ERROR | F_ERROR_OPCODE;
+            hs->flags |= F_ERROR | F_ERROR_OPCODE;
     }
 
     if (cflags & C_MODRM)
     {
-        pHs->flags |= F_MODRM;
-        pHs->modrm = c = *p++;
-        pHs->modrm_mod = nMod = c >> 6;
-        pHs->modrm_rm = nRm = c & 7;
-        pHs->modrm_reg = nReg = (c & 0x3f) >> 3;
+        hs->flags |= F_MODRM;
+        hs->modrm = c = *p++;
+        hs->modrm_mod = nMod = c >> 6;
+        hs->modrm_rm = nRm = c & 7;
+        hs->modrm_reg = nReg = (c & 0x3f) >> 3;
 
         if (x && ((x << nReg) & 0x80))
-            pHs->flags |= F_ERROR | F_ERROR_OPCODE;
+            hs->flags |= F_ERROR | F_ERROR_OPCODE;
 
-        if (!pHs->opcode2 && opcode >= 0xd9 && opcode <= 0xdf)
+        if (!hs->opcode2 && opcode >= 0xd9 && opcode <= 0xdf)
         {
-            UINT8 t = opcode - 0xd9;
+            std::uint8_t t = opcode - 0xd9;
             if (nMod == 3)
             {
                 ht = mhde64_table + DELTA_FPU_MODRM + t * 8;
@@ -148,43 +235,10 @@ pref_done:
                 t = ht[t] << nReg;
             }
             if (t & 0x80)
-                pHs->flags |= F_ERROR | F_ERROR_OPCODE;
+                hs->flags |= F_ERROR | F_ERROR_OPCODE;
         }
 
-        if (pref & PRE_LOCK)
-        {
-            if (nMod == 3)
-            {
-                pHs->flags |= F_ERROR | F_ERROR_LOCK;
-            }
-            else
-            {
-                UINT8 *table_end, op = opcode;
-                if (pHs->opcode2)
-                {
-                    ht = mhde64_table + DELTA_OP2_LOCK_OK;
-                    table_end = ht + DELTA_OP_ONLY_MEM - DELTA_OP2_LOCK_OK;
-                }
-                else
-                {
-                    ht = mhde64_table + DELTA_OP_LOCK_OK;
-                    table_end = ht + DELTA_OP2_LOCK_OK - DELTA_OP_LOCK_OK;
-                    op &= -2;
-                }
-                for (; ht != table_end; ht++)
-                    if (*ht++ == op)
-                    {
-                        if (!((*ht << nReg) & 0x80))
-                            goto no_lock_error;
-                        else
-                            break;
-                    }
-                pHs->flags |= F_ERROR | F_ERROR_LOCK;
-            no_lock_error:;
-            }
-        }
-
-        if (pHs->opcode2)
+        if (hs->opcode2)
         {
             switch (opcode)
             {
@@ -192,14 +246,14 @@ pref_done:
             case 0x22:
                 nMod = 3;
                 if (nReg > 4 || nReg == 1)
-                    goto error_operand;
+                    error_operand();
                 else
                     goto no_error_operand;
             case 0x21:
             case 0x23:
                 nMod = 3;
                 if (nReg == 4 || nReg == 5)
-                    goto error_operand;
+                    error_operand();
                 else
                     goto no_error_operand;
             }
@@ -210,12 +264,12 @@ pref_done:
             {
             case 0x8c:
                 if (nReg > 5)
-                    goto error_operand;
+                    error_operand();
                 else
                     goto no_error_operand;
             case 0x8e:
                 if (nReg == 1 || nReg > 5)
-                    goto error_operand;
+                    error_operand();
                 else
                     goto no_error_operand;
             }
@@ -223,8 +277,8 @@ pref_done:
 
         if (nMod == 3)
         {
-            UINT8 *table_end;
-            if (pHs->opcode2)
+            std::uint8_t* table_end;
+            if (hs->opcode2)
             {
                 ht = mhde64_table + DELTA_OP2_ONLY_MEM;
                 table_end = ht + sizeof(mhde64_table) - DELTA_OP2_ONLY_MEM;
@@ -238,13 +292,13 @@ pref_done:
                 if (*ht++ == opcode)
                 {
                     if ((*ht++ & pref) && !((*ht << nReg) & 0x80))
-                        goto error_operand;
+                        error_operand();
                     else
                         break;
                 }
             goto no_error_operand;
         }
-        else if (pHs->opcode2)
+        else if (hs->opcode2)
         {
             switch (opcode)
             {
@@ -252,14 +306,14 @@ pref_done:
             case 0xd7:
             case 0xf7:
                 if (pref & (PRE_NONE | PRE_66))
-                    goto error_operand;
+                    error_operand();
                 break;
             case 0xd6:
                 if (pref & (PRE_F2 | PRE_F3))
-                    goto error_operand;
+                    error_operand();
                 break;
             case 0xc5:
-                goto error_operand;
+                error_operand();
             default:;
             }
             goto no_error_operand;
@@ -267,8 +321,6 @@ pref_done:
         else
             goto no_error_operand;
 
-    error_operand:
-        pHs->flags |= F_ERROR | F_ERROR_OPERAND;
     no_error_operand:
 
         c = *p++;
@@ -303,12 +355,12 @@ pref_done:
 
         if (nMod != 3 && nRm == 4)
         {
-            pHs->flags |= F_SIB;
+            hs->flags |= F_SIB;
             p++;
-            pHs->sib = c;
-            pHs->sib_scale = c >> 6;
-            pHs->sib_index = (c & 0x3f) >> 3;
-            if ((pHs->sib_base = c & 7) == 5 && !(nMod & 1))
+            hs->sib = c;
+            hs->sib_scale = c >> 6;
+            hs->sib_index = (c & 0x3f) >> 3;
+            if ((hs->sib_base = c & 7) == 5 && !(nMod & 1))
                 nDispSize = 4;
         }
 
@@ -316,23 +368,23 @@ pref_done:
         switch (nDispSize)
         {
         case 1:
-            pHs->flags |= F_DISP8;
-            pHs->disp.disp8 = *p;
+            hs->flags |= F_DISP8;
+            hs->disp.disp8 = *p;
             break;
         case 2:
-            pHs->flags |= F_DISP16;
-            pHs->disp.disp16 = *reinterpret_cast<UINT16 *>(p);
+            hs->flags |= F_DISP16;
+            hs->disp.disp16 = *reinterpret_cast<std::uint16_t*>(p);
             break;
         case 4:
-            pHs->flags |= F_DISP32;
-            pHs->disp.disp32 = *reinterpret_cast<UINT32 *>(p);
+            hs->flags |= F_DISP32;
+            hs->disp.disp32 = *reinterpret_cast<std::uint32_t*>(p);
             break;
         default:;
         }
         p += nDispSize;
     }
     else if (pref & PRE_LOCK)
-        pHs->flags |= F_ERROR | F_ERROR_LOCK;
+        hs->flags |= F_ERROR | F_ERROR_LOCK;
 
     if (cflags & C_IMM_P66)
     {
@@ -340,23 +392,23 @@ pref_done:
         {
             if (pref & PRE_66)
             {
-                pHs->flags |= F_IMM16 | F_RELATIVE;
-                pHs->imm.imm16 = *reinterpret_cast<UINT16 *>(p);
+                hs->flags |= F_IMM16 | F_RELATIVE;
+                hs->imm.imm16 = *reinterpret_cast<std::uint16_t*>(p);
                 p += 2;
-                goto disasm_done;
+                return disasm_done(pCode);
             }
             goto rel32_ok;
         }
         if (op64)
         {
-            pHs->flags |= F_IMM64;
-            pHs->imm.imm64 = *reinterpret_cast<UINT64 *>(p);
+            hs->flags |= F_IMM64;
+            hs->imm.imm64 = *reinterpret_cast<std::uint64_t*>(p);
             p += 8;
         }
         else if (!(pref & PRE_66))
         {
-            pHs->flags |= F_IMM32;
-            pHs->imm.imm32 = *reinterpret_cast<UINT32 *>(p);
+            hs->flags |= F_IMM32;
+            hs->imm.imm32 = *reinterpret_cast<std::uint32_t*>(p);
             p += 4;
         }
         else
@@ -366,38 +418,30 @@ pref_done:
     if (cflags & C_IMM16)
     {
     imm16_ok:
-        pHs->flags |= F_IMM16;
-        pHs->imm.imm16 = *reinterpret_cast<UINT16 *>(p);
+        hs->flags |= F_IMM16;
+        hs->imm.imm16 = *reinterpret_cast<std::uint16_t*>(p);
         p += 2;
     }
     if (cflags & C_IMM8)
     {
-        pHs->flags |= F_IMM8;
-        pHs->imm.imm8 = *p++;
+        hs->flags |= F_IMM8;
+        hs->imm.imm8 = *p++;
     }
 
     if (cflags & C_REL32)
     {
     rel32_ok:
-        pHs->flags |= F_IMM32 | F_RELATIVE;
-        pHs->imm.imm32 = *reinterpret_cast<UINT32 *>(p);
+        hs->flags |= F_IMM32 | F_RELATIVE;
+        hs->imm.imm32 = *reinterpret_cast<std::uint32_t*>(p);
         p += 4;
     }
     else if (cflags & C_REL8)
     {
-        pHs->flags |= F_IMM8 | F_RELATIVE;
-        pHs->imm.imm8 = *p++;
+        hs->flags |= F_IMM8 | F_RELATIVE;
+        hs->imm.imm8 = *p++;
     }
 
-disasm_done:
-
-    if ((pHs->len = static_cast<UINT8>(p - (UINT8 *)pCode)) > 15)
-    {
-        pHs->flags |= F_ERROR | F_ERROR_LENGTH;
-        pHs->len = 15;
-    }
-
-    return (unsigned int)pHs->len;
+    return disasm_done(pCode);
 }
 
 #endif // defined(_M_X64) || defined(__x86_64__)
