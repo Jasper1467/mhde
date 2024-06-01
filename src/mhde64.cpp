@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <cstring>
 
-std::uint8_t x = 0;
+std::uint8_t g_nGroupFlag = 0;
 std::uint8_t g_nCurrentOpcodeByte = 0;
 std::uint8_t cflags = 0;
 std::uint8_t opcode = 0;
@@ -14,6 +14,13 @@ std::uint8_t pref = 0;
 
 std::uint8_t* g_pOpcodeIter = nullptr;
 std::uint8_t* ht = nullptr;
+
+// ModR/M byte layout
+//
+//  7   6   5   4   3   2   1   0
+//+---+---+---+---+---+---+---+---+
+//|  Mod  | Reg/Opcode |   R/M   |
+//+---+---+---+---+---+---+---+---+
 
 std::uint8_t g_nMod = 0;
 std::uint8_t g_nReg = 0;
@@ -24,14 +31,17 @@ std::uint8_t op64 = 0;
 
 mhde64s* hs = nullptr;
 
-#define CHECK_REX(opcode) ((opcode & 0xf0) == 0x40)
-#define CHECK_ESP_REGISTER(opcode) ((opcode & -3) == 0x24)
+#define CHECK_REX(opcode) (((opcode) & 0xf0) == 0x40)
+#define CHECK_ESP_REGISTER(opcode) (((opcode) & -3) == 0x24)
 
-#define IMM_BASED_INCREMENT_AMOUNT(n) (n >> 3) // <=> (n/8)
+#define IMM_BASED_INCREMENT_AMOUNT(n) ((n) >> 3) // <=> (n/8)
+
+// Checks if the most significant bit (MSB) of a variable is set to 1
+#define INSPECT_MSB(n) ((n) & 0x80)
 
 void ResetGlobals()
 {
-    x = 0;
+    g_nGroupFlag = 0;
     g_nCurrentOpcodeByte = 0;
     cflags = 0;
     opcode = 0;
@@ -175,51 +185,49 @@ pref_done:
 void HandlePrefixLock()
 {
     // Check if the instruction has a lock prefix
-    if (pref & PRE_LOCK)
+    if (!(pref & PRE_LOCK))
+        return;
+
+    // Check if the mod field is 3
+    if (g_nMod == 3)
     {
-        // Check if the mod field is 3
-        if (g_nMod == 3)
+        // If mod field is 3, set error flags
+        error_lock();
+        return;
+    }
+
+    // Determine the appropriate lookup table based on opcode and prefix state
+    const std::uint8_t* pTableStart;
+    const std::uint8_t* pTableEnd;
+    std::uint8_t op = opcode;
+
+    if (hs->opcode2)
+    {
+        pTableStart = mhde64_table + DELTA_OP2_LOCK_OK;
+        pTableEnd = pTableStart + DELTA_OP_ONLY_MEM - DELTA_OP2_LOCK_OK;
+    }
+    else
+    {
+        pTableStart = mhde64_table + DELTA_OP_LOCK_OK;
+        pTableEnd = pTableStart + DELTA_OP2_LOCK_OK - DELTA_OP_LOCK_OK;
+        op &= ~0x01; // Clear the least significant bit
+    }
+
+    // Iterate through the lookup table to find a matching opcode
+    for (const std::uint8_t* ht = pTableStart; ht != pTableEnd; ht++)
+    {
+        // Check if the opcode matches
+        if (*ht == op)
         {
-            // If mod field is 3, set error flags
-            error_lock();
-        }
-        else
-        {
-            std::uint8_t *g_pTableEnd, op = opcode;
-
-            // Determine the appropriate lookup table based on opcode and prefix state
-            if (hs->opcode2)
-            {
-                ht = mhde64_table + DELTA_OP2_LOCK_OK;
-                g_pTableEnd = ht + DELTA_OP_ONLY_MEM - DELTA_OP2_LOCK_OK;
-            }
-            else
-            {
-                ht = mhde64_table + DELTA_OP_LOCK_OK;
-                g_pTableEnd = ht + DELTA_OP2_LOCK_OK - DELTA_OP_LOCK_OK;
-                op &= -2;
-            }
-
-            // Iterate through the lookup table to find a matching opcode
-            for (; ht != g_pTableEnd; ht++)
-            {
-                // Check if the opcode matches
-                if (*ht++ == op)
-                {
-                    // If the condition is met, break out of the loop
-                    if (!((*ht << g_nReg) & 0x80))
-                        goto no_lock_error;
-                    else
-                        break;
-                }
-            }
-
-            // If no match is found, set error flags
-            error_lock();
-
-        no_lock_error:;
+            // If the condition is met, check for lock error
+            if (!(INSPECT_MSB(*(ht + 1) << g_nReg)))
+                return; // No lock error, exit the function
+            break;
         }
     }
+
+    // If no match is found, or lock error detected, set error flags
+    error_lock();
 }
 
 std::uint32_t disasm_done(const std::uint8_t* pCode)
@@ -257,18 +265,18 @@ std::uint32_t mhde64_disasm(const std::uint8_t* pCode, mhde64s* _hs)
 
     // Each entry in mhde64_table corresponds to a group of four opcodes. So dividing the opcode by 4 and then taking
     // the remainder with % 4 helps determine the specific entry in mhde64_table that corresponds to the opcode.
-    constexpr int OPCODE_TABLE_GROUP_SIZE = 4;
+    constexpr int OPCODE_TABLE_GROUP_SIZE = 4; // Can increase without fucking up?
 
     cflags = ht[ht[opcode / OPCODE_TABLE_GROUP_SIZE] + (opcode % OPCODE_TABLE_GROUP_SIZE)];
     if (cflags == C_ERROR)
         error_opcode_increment();
 
-    x = 0;
+    g_nGroupFlag = 0;
     if (cflags & C_GROUP)
     {
-        const std::uint16_t t = *reinterpret_cast<std::uint16_t*>(ht + (cflags & 0x7f));
-        cflags = static_cast<std::uint8_t>(t);
-        x = static_cast<std::uint8_t>(t >> 8);
+        const std::uint16_t nGroupExtra = *reinterpret_cast<std::uint16_t*>(ht + (cflags & 0x7f));
+        cflags = static_cast<std::uint8_t>(nGroupExtra);
+        g_nGroupFlag = static_cast<std::uint8_t>(nGroupExtra >> 8);
     }
 
     if (hs->opcode2)
@@ -292,7 +300,7 @@ std::uint32_t mhde64_disasm(const std::uint8_t* pCode, mhde64s* _hs)
         // Extract the register field from the ModR/M byte
         hs->modrm_reg = g_nReg = (g_nCurrentOpcodeByte & 0x3f) >> 3;
 
-        if (x && ((x << g_nReg) & 0x80))
+        if (g_nGroupFlag && (INSPECT_MSB(g_nGroupFlag << g_nReg)))
             error_opcode();
 
         if (!hs->opcode2 && opcode >= 0xd9 && opcode <= 0xdf)
@@ -308,7 +316,8 @@ std::uint32_t mhde64_disasm(const std::uint8_t* pCode, mhde64s* _hs)
                 ht = mhde64_table + DELTA_FPU_REG;
                 nOpcodeDelta = ht[nOpcodeDelta] << g_nReg;
             }
-            if (nOpcodeDelta & 0x80)
+
+            if (INSPECT_MSB(nOpcodeDelta))
                 error_opcode();
         }
 
@@ -365,7 +374,7 @@ std::uint32_t mhde64_disasm(const std::uint8_t* pCode, mhde64s* _hs)
             for (; ht != pTableEnd; ht += 2)
                 if (*ht++ == opcode)
                 {
-                    if ((*ht++ & pref) && !((*ht << g_nReg) & 0x80))
+                    if ((*ht++ & pref) && !(INSPECT_MSB(*ht << g_nReg)))
                         error_operand();
                     else
                         break;
