@@ -45,50 +45,62 @@ enum Prefixes_e
     PREFIX_ADDRESS_SIZE = 0x67
 };
 
-#pragma pack(push, 1)
+// #pragma pack(push, 1)
 
 typedef struct
 {
+    // Length of the instruction in bytes
     std::uint8_t len;
-    std::uint8_t p_rep;
-    std::uint8_t p_lock;
-    std::uint8_t p_seg;
-    std::uint8_t p_66;
-    std::uint8_t p_67;
-    std::uint8_t rex;
-    std::uint8_t rex_w;
-    std::uint8_t rex_r;
-    std::uint8_t rex_x;
-    std::uint8_t rex_b;
-    std::uint8_t opcode;
-    std::uint8_t opcode2;
-    std::uint8_t modrm;
-    std::uint8_t modrm_mod;
-    std::uint8_t modrm_reg;
-    std::uint8_t modrm_rm;
-    std::uint8_t sib;
-    std::uint8_t sib_scale;
-    std::uint8_t sib_index;
-    std::uint8_t sib_base;
 
+    // Prefixes
+    std::uint8_t p_rep;  // Repeat prefix
+    std::uint8_t p_lock; // Lock prefix
+    std::uint8_t p_seg;  // Segment override prefix
+    std::uint8_t p_66;   // Operand size override prefix
+    std::uint8_t p_67;   // Address size override prefix
+    std::uint8_t rex;    // REX prefix
+    std::uint8_t rex_w;  // REX.W bit
+    std::uint8_t rex_r;  // REX.R bit
+    std::uint8_t rex_x;  // REX.X bit
+    std::uint8_t rex_b;  // REX.B bit
+
+    // Opcodes
+    std::uint8_t opcode;  // Primary opcode
+    std::uint8_t opcode2; // Secondary opcode
+
+    // ModR/M byte
+    std::uint8_t modrm;     // ModR/M byte
+    std::uint8_t modrm_mod; // Mod field
+    std::uint8_t modrm_reg; // Reg field
+    std::uint8_t modrm_rm;  // R/M field
+
+    // SIB byte
+    std::uint8_t sib;       // SIB byte
+    std::uint8_t sib_scale; // SIB scale factor
+    std::uint8_t sib_index; // SIB index
+    std::uint8_t sib_base;  // SIB base
+
+    // Immediate data
     union
     {
-        std::uint8_t imm8;
-        std::uint16_t imm16;
-        std::uint32_t imm32;
-        std::uint64_t imm64;
+        std::uint8_t imm8;   // 8-bit immediate
+        std::uint16_t imm16; // 16-bit immediate
+        std::uint32_t imm32; // 32-bit immediate
+        std::uint64_t imm64; // 64-bit immediate
     } imm;
 
+    // Displacement data
     union
     {
-        std::uint8_t disp8;
-        std::uint16_t disp16;
-        std::uint32_t disp32;
+        std::uint8_t disp8;   // 8-bit displacement
+        std::uint16_t disp16; // 16-bit displacement
+        std::uint32_t disp32; // 32-bit displacement
     } disp;
 
+    // Flags indicating various properties of the instruction
     std::uint32_t flags;
 } mhde64s;
 
-#pragma pack(pop)
+// #pragma pack(pop)
 
-std::uint32_t mhde64_disasm(const void* pCode, mhde64s* pHs);
+std::uint32_t mhde64_disasm(const void* pCode, mhde64s* _hs);

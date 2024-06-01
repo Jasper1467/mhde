@@ -2,44 +2,78 @@
 
 enum ClassFlags_e
 {
-    C_NONE   = 0x00,
-    C_MODRM  = 0x01,
-    C_IMM8   = 0x02,
-    C_IMM16  = 0x04,
-    C_IMM_P66= 0x10,
-    C_REL8   = 0x20,
-    C_REL32  = 0x40,
-    C_GROUP  = 0x80,
-    C_ERROR  = 0xff
+    // No class flags
+    C_NONE = 0x00,
+
+    // ModR/M byte present
+    C_MODRM = 0x01,
+
+    // 8-bit immediate value present
+    C_IMM8 = 0x02,
+
+    // 16-bit immediate value present
+    C_IMM16 = 0x04,
+
+    // Immediate value prefixed with 66h
+    C_IMM_P66 = 0x10,
+
+    // 8-bit relative offset present
+    C_REL8 = 0x20,
+
+    // 32-bit relative offset present
+    C_REL32 = 0x40,
+
+    // Group flag set
+    C_GROUP = 0x80,
+
+    // Error flag set
+    C_ERROR = 0xff
 };
 
 enum PrefixFlags_e
 {
-    PRE_ANY   = 0x00,
-    PRE_NONE  = 0x01,
-    PRE_F2    = 0x02,
-    PRE_F3    = 0x04,
-    PRE_66    = 0x08,
-    PRE_67    = 0x10,
-    PRE_LOCK  = 0x20,
-    PRE_SEG   = 0x40,
-    PRE_ALL   = 0xff
+    PRE_ANY = 0x00,
+    PRE_NONE = 0x01,
+    PRE_F2 = 0x02,
+    PRE_F3 = 0x04,
+    PRE_66 = 0x08,
+    PRE_67 = 0x10,
+    PRE_LOCK = 0x20,
+    PRE_SEG = 0x40,
+    PRE_ALL = 0xff
 };
 
 enum DeltaValues_e
 {
-    DELTA_OPCODES        = 0x4a,
-    DELTA_FPU_REG        = 0xfd,
-    DELTA_FPU_MODRM      = 0x104,
-    DELTA_PREFIXES       = 0x13c,
-    DELTA_OP_LOCK_OK     = 0x1ae,
-    DELTA_OP2_LOCK_OK    = 0x1c6,
-    DELTA_OP_ONLY_MEM    = 0x1d8,
-    DELTA_OP2_ONLY_MEM   = 0x1e7
+    // Offset for the secondary opcode table
+    DELTA_OPCODES = 0x4a,
+
+    // Offset for the FPU register table
+    DELTA_FPU_REG = 0xfd,
+
+    // Offset for the FPU register table when using MODRM addressing
+    DELTA_FPU_MODRM = 0x104,
+
+    // Offset for the prefixes table
+    DELTA_PREFIXES = 0x13c,
+
+    // Offset for the opcode table when lock prefix is allowed
+    DELTA_OP_LOCK_OK = 0x1ae,
+
+    // Offset for the secondary opcode table when lock prefix is allowed
+    DELTA_OP2_LOCK_OK = 0x1c6,
+
+    // Offset for the opcode table when only memory operands are allowed
+    DELTA_OP_ONLY_MEM = 0x1d8,
+
+    // Offset for the secondary opcode table when only memory operands are allowed
+    DELTA_OP2_ONLY_MEM = 0x1e7
 };
 
-inline unsigned char mhde64_table[] =
-{
+// Table for decoding x64 instructions
+// This table is used to determine the behavior of various x64 opcodes
+// Each entry corresponds to a specific opcode or instruction pattern
+inline unsigned char mhde64_table[] = {
     0xa5, 0xaa, 0xa5, 0xb8, 0xa5, 0xaa, 0xa5, 0xaa, 0xa5, 0xb8, 0xa5, 0xb8, 0xa5, 0xb8, 0xa5, 0xb8, 0xc0, 0xc0, 0xc0,
     0xc0, 0xc0, 0xc0, 0xc0, 0xc0, 0xac, 0xc0, 0xcc, 0xc0, 0xa1, 0xa1, 0xa1, 0xa1, 0xb1, 0xa5, 0xa5, 0xa6, 0xc0, 0xc0,
     0xd7, 0xda, 0xe0, 0xc0, 0xe4, 0xc0, 0xea, 0xea, 0xe0, 0xe0, 0x98, 0xc8, 0xee, 0xf1, 0xa5, 0xd3, 0xa5, 0xa5, 0xa1,

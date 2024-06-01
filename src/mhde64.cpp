@@ -25,6 +25,7 @@ std::uint8_t op64 = 0;
 mhde64s* hs = nullptr;
 
 #define CHECK_REX(c) ((c & 0xf0) == 0x40)
+#define CHECK_ESP_REGISTER(opcode) ((opcode & -3) == 0x24)
 
 void ResetGlobals()
 {
@@ -42,28 +43,27 @@ void ResetGlobals()
     op64 = 0;
 }
 
-void error_opcode()
-{
-    // Set error flags in the instruction structure
-    hs->flags |= F_ERROR | F_ERROR_OPCODE;
-
-    cflags = 0;
-
-    // Check if the opcode is a special case
-    if ((opcode & -3) == 0x24)
-        cflags++;
-}
-
 void error_operand()
 {
-    // Add (operand) error flags
+    // Add (opcode) error flags
     hs->flags |= F_ERROR | F_ERROR_OPERAND;
 }
 
 void error_opcode()
 {
-    // Add (opcode) error flags
+    // Add (operand) error flags
+    // Set error flags in the instruction structure
     hs->flags |= F_ERROR | F_ERROR_OPCODE;
+}
+
+void error_opcode_increment()
+{
+    error_operand();
+    cflags = 0;
+
+    // Check if the opcode is a special case
+    if (CHECK_ESP_REGISTER(opcode))
+        cflags++;
 }
 
 void error_lock()
@@ -258,7 +258,7 @@ std::uint32_t mhde64_disasm(const void* pCode, mhde64s* _hs)
 
     cflags = ht[ht[opcode / OPCODE_TABLE_GROUP_SIZE] + (opcode % OPCODE_TABLE_GROUP_SIZE)];
     if (cflags == C_ERROR)
-        error_opcode();
+        error_opcode_increment();
 
     x = 0;
     if (cflags & C_GROUP)

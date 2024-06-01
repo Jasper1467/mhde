@@ -19,7 +19,6 @@ if (${ARCH} EQUAL 32)
     )
     set(HEADERS
         include/mhde32.hpp
-        include/pstdint.hpp
         include/table32.hpp
         include/wrapper.hpp
     )
@@ -29,7 +28,6 @@ elseif (${ARCH} EQUAL 64)
     )
     set(HEADERS
         include/mhde64.hpp
-        include/pstdint.hpp
         include/table64.hpp
         include/wrapper.hpp
     )
