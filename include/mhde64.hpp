@@ -103,4 +103,4 @@ typedef struct
 
 // #pragma pack(pop)
 
-std::uint32_t mhde64_disasm(const void* pCode, mhde64s* _hs);
+std::uint32_t mhde64_disasm(const std::uint8_t* pCode, mhde64s* _hs);

@@ -21,7 +21,7 @@ class CMHDE
 
     ~CMHDE() = default;
 
-    std::uint32_t Disassemble(const void* pCode)
+    std::uint32_t Disassemble(const std::uint8_t* pCode)
     {
         return MHDE_DISASM(pCode, &m_State);
     }
