@@ -1,4 +1,4 @@
-#pragma oce
+#pragma once
 
 #if defined(_M_IX86) || defined(__i386__)
 #include "mhde32.hpp"

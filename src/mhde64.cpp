@@ -214,13 +214,13 @@ void HandlePrefixLock()
     }
 
     // Iterate through the lookup table to find a matching opcode
-    for (const std::uint8_t* ht = pTableStart; ht != pTableEnd; ht++)
+    for (const std::uint8_t* _ht = pTableStart; _ht != pTableEnd; _ht++)
     {
         // Check if the opcode matches
-        if (*ht == op)
+        if (*_ht == op)
         {
             // If the condition is met, check for lock error
-            if (!(INSPECT_MSB(*(ht + 1) << g_nReg)))
+            if (!(INSPECT_MSB(*(_ht + 1) << g_nReg)))
                 return; // No lock error, exit the function
             break;
         }
