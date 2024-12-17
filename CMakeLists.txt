@@ -19,8 +19,8 @@ if (${ARCH} EQUAL 32)
     )
     set(HEADERS
         include/mhde32.hpp
-        include/table32.hpp
-        include/wrapper.hpp
+        include/mhde_table32.hpp
+        include/mhde_wrapper.hpp
     )
 elseif (${ARCH} EQUAL 64)
     set(SOURCES
@@ -28,8 +28,8 @@ elseif (${ARCH} EQUAL 64)
     )
     set(HEADERS
         include/mhde64.hpp
-        include/table64.hpp
-        include/wrapper.hpp
+        include/mhde_table64.hpp
+        include/mhde_wrapper.hpp
     )
 else()
     message(FATAL_ERROR "Unsupported architecture")

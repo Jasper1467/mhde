@@ -1,7 +1,7 @@
 #if defined(_M_X64) || defined(__x86_64__)
 
 #include "../include/mhde64.hpp"
-#include "../include/table64.hpp"
+#include "../include/mhde_table64.hpp"
 
 #include <cstdint>
 #include <cstring>

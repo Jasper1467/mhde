@@ -1,7 +1,7 @@
 #if defined(_M_IX86) || defined(__i386__)
 
 #include "../include/mhde32.hpp"
-#include "../include/table32.hpp"
+#include "../include/mhde_table32.hpp"
 
 #include <cstring>
 
