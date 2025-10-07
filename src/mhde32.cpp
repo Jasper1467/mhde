@@ -8,7 +8,7 @@
 unsigned int mhde32_disasm(const void* pCode, mhde32s* pHs)
 {
     std::uint8_t x;
-    std::uint8_t c;
+    std::uint8_t c = 0;
     std::uint8_t* p = (std::uint8_t*)pCode;
     std::uint8_t cflags;
     std::uint8_t opcode;
@@ -289,7 +289,7 @@ pref_done:
             pHs->sib = c;
             pHs->sib_scale = c >> 6;
             pHs->sib_index = (c & 0x3f) >> 3;
-            if ((hs->sib_base = c & 7) == 5 && !(nMod & 1))
+            if ((pHs->sib_base = c & 7) == 5 && !(nMod & 1))
                 nDispSize = 4;
         }
 
@@ -321,7 +321,7 @@ pref_done:
             if (pref & PRE_66)
             {
                 pHs->flags |= F_IMM16 | F_RELATIVE;
-                pH->imm.imm16 = *(uint16_t*)p;
+                pHs->imm.imm16 = *(uint16_t*)p;
                 p += 2;
                 goto disasm_done;
             }
@@ -348,7 +348,7 @@ pref_done:
             pHs->flags |= F_IMM16;
             pHs->disp.disp16 = *(uint16_t*)p;
         }
-        else if (hs->flags & F_IMM16)
+        else if (pHs->flags & F_IMM16)
         {
             pHs->flags |= F_2IMM16;
             pHs->disp.disp16 = *(uint16_t*)p;
