@@ -2,68 +2,57 @@ cmake_minimum_required(VERSION 3.21)
 project(mhde VERSION 1.0)
 set(PROJECT_DESCRIPTION "A modern C++ port of the HDE (Hacker Disassembler Engine).")
 
-# C++ standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set(ARCH 64)
-elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
-    set(ARCH 32)
-endif()
+option(BUILD_X86 "Build x86 version" ON)
+option(BUILD_X64 "Build x64 version" ON)
 
-# Source files
-if (${ARCH} EQUAL 32)
-    set(SOURCES
-        src/mhde32.cpp
-    )
-    set(HEADERS
+function(set_arch_output_name target arch)
+    if (WIN32)
+        set_target_properties(${target} PROPERTIES OUTPUT_NAME "mhde${arch}")
+    else() # Linux/macOS
+        set_target_properties(${target} PROPERTIES OUTPUT_NAME "mhde${arch}")
+    endif()
+endfunction()
+
+if (BUILD_X86)
+    message(STATUS "Building x86 version")
+    set(SOURCES_X86 src/mhde32.cpp)
+    set(HEADERS_X86
         include/mhde32.hpp
         include/mhde_table32.hpp
         include/mhde_wrapper.hpp
     )
-elseif (${ARCH} EQUAL 64)
-    set(SOURCES
-        src/mhde64.cpp
-    )
-    set(HEADERS
+
+    add_library(mhde_lib_x86 STATIC ${SOURCES_X86} ${HEADERS_X86})
+    set_arch_output_name(mhde_lib_x86 32)
+endif()
+
+if (BUILD_X64)
+    message(STATUS "Building x64 version")
+    set(SOURCES_X64 src/mhde64.cpp)
+    set(HEADERS_X64
         include/mhde64.hpp
         include/mhde_table64.hpp
         include/mhde_wrapper.hpp
     )
-else()
-    message(FATAL_ERROR "Unsupported architecture")
+
+    add_library(mhde_lib_x64 STATIC ${SOURCES_X64} ${HEADERS_X64})
+    set_arch_output_name(mhde_lib_x64 64)
 endif()
 
-message(STATUS "Building in architecture: ${ARCH} bit!")
-
-# Create library
-add_library(mhde_lib STATIC ${SOURCES} ${HEADERS})
-
-# Include directories (if needed)
-# target_include_directories(hmde_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-
-# Compiler options
-if (MSVC)
-    target_compile_options(mhde_lib PRIVATE /W4 /WX)
-else()
-    target_compile_options(mhde_lib PRIVATE -Wall -Wextra -Wpedantic -Werror)
-endif()
-
-# Optional: If you want to install the library
-# install(TARGETS mhde_lib DESTINATION lib)
-# install(FILES ${HEADERS} DESTINATION include)
-
-# Define an option to enable/disable building tests
-option(BUILD_TESTS "Build tests" OFF) # Set to OFF by default
+option(BUILD_TESTS "Build tests" OFF) # OFF by default
 
 if (BUILD_TESTS)
-    # Add an executable target for tests/tests.cpp
     add_executable(tests tests/tests.cpp)
-
-    # Include directories for tests
     target_include_directories(tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-    # Link your library to the tests executable
-    target_link_libraries(tests PRIVATE mhde_lib)
+    if (BUILD_X86)
+        target_link_libraries(tests PRIVATE mhde_lib_x86)
+    endif()
+    if (BUILD_X64)
+        target_link_libraries(tests PRIVATE mhde_lib_x64)
+    endif()
 endif()
+
